@@ -5,11 +5,10 @@ context = moderngl.create_standalone_context(require=430)
 
 
 class Tensor():
-    def __init__(self, shape):
+    def __init__(self, shape, source=None):
         assert all(isinstance(v, int) for v in shape)
         self.context = context
         self.s = shape
-
 
         MAX_X = 1024
         X = min(MAX_X, shape[0])
@@ -22,7 +21,10 @@ class Tensor():
         }
         b_X = shape[0] // MAX_X + 1
 
-        self.buffer = context.buffer(np.zeros((X, b_X)).astype('f4'))
+        if source is None:
+            self.buffer = context.buffer(np.zeros((X, b_X)).astype('f4'))
+        else:
+            self.buffer = context.buffer(source.astype('f4'))
 
         self.bs = (b_X,)
         self.temp = consts

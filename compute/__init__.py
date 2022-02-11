@@ -23,4 +23,5 @@ def arange(length):
     return tensor
 
 def from_array(array):
-    pass
+    tensor = Tensor(array.shape, array)
+    return tensor
