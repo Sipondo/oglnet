@@ -8,12 +8,13 @@ import numpy
 print(timeit(lambda: numpy.arange(2000000), number=10))
 
 
-t = np.arange(20000)
+t = np.arange(2000000)
+
+t / (t + 0.000001)
 
 
-t.reshape(1000, 20)
+print(timeit(lambda: t ** 1.5, number=10))
 
-t.shape
+a = t.array
 
-np.arange(10) * 3
-
+print(timeit(lambda: a ** 1.5, number=10))

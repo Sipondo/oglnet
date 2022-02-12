@@ -1,4 +1,5 @@
 import numpy as np
+from numbers import Number
 from gl.context import Context
 
 
@@ -38,6 +39,14 @@ class Tensor:
         self.bs = (b_X,)
         self.temp = consts
 
+    def copy(self):
+        return Tensor(self.buffer.read(), self.shape)
+
+    def reshape(self, *shape):
+        tensor = self.copy()
+        tensor.s = shape
+        return tensor
+
     def __str__(self):
         return str(self.array)
 
@@ -47,22 +56,61 @@ class Tensor:
     def __del__(self):
         self.buffer.release()
 
-    def copy(self):
-        return Tensor(self.buffer.read(), self.shape)
+    def __add__(self, other):
+        if isinstance(other, Number):
+            tensor = self.copy()
+            consts = tensor.temp.copy()
 
-    def reshape(self, *shape):
-        tensor = self.copy()
-        tensor.s = shape
+            consts["S"] = other
+            compute_shader = Context.shader("add_scalar", consts)
+            tensor.buffer.bind_to_storage_buffer(0)
+            compute_shader.run(group_x=tensor.bs[0], group_y=1, group_z=1)
+
+        elif isinstance(other, Tensor):
+            assert self.size == other.size
+
+            tensor = Tensor(shape=self.shape)
+            consts = tensor.temp.copy()
+
+            compute_shader = Context.shader("add_tensor", consts)
+
+            tensor.buffer.bind_to_storage_buffer(0)
+            self.buffer.bind_to_storage_buffer(1)
+            other.buffer.bind_to_storage_buffer(2)
+
+            compute_shader.run(group_x=tensor.bs[0], group_y=1, group_z=1)
+
         return tensor
 
-    def __mul__(self, other):
-        tensor = self.copy()
-        consts = tensor.temp.copy()
+    def __radd__(self, other):
+        return self + other
 
-        consts["S"] = other
-        compute_shader = Context.shader("multiply_scalar", consts)
-        tensor.buffer.bind_to_storage_buffer(0)
-        compute_shader.run(group_x=tensor.bs[0], group_y=1, group_z=1)
+    def __sub__(self, other):
+        return self + (-1 * other)
+
+    def __mul__(self, other):
+        if isinstance(other, Number):
+            tensor = self.copy()
+            consts = tensor.temp.copy()
+
+            consts["S"] = float(other)
+            compute_shader = Context.shader("multiply_scalar", consts)
+            tensor.buffer.bind_to_storage_buffer(0)
+            compute_shader.run(group_x=tensor.bs[0], group_y=1, group_z=1)
+
+        elif isinstance(other, Tensor):
+            assert self.size == other.size
+
+            tensor = Tensor(shape=self.shape)
+            consts = tensor.temp.copy()
+
+            compute_shader = Context.shader("multiply_tensor", consts)
+
+            tensor.buffer.bind_to_storage_buffer(0)
+            self.buffer.bind_to_storage_buffer(1)
+            other.buffer.bind_to_storage_buffer(2)
+
+            compute_shader.run(group_x=tensor.bs[0], group_y=1, group_z=1)
 
         return tensor
 
@@ -70,7 +118,36 @@ class Tensor:
         return self * other
 
     def __truediv__(self, other):
-        return self * (1 / other)
+        if isinstance(other, Number):
+            return self * (1 / other)
+        elif isinstance(other, Tensor):
+            assert self.size == other.size
+
+            tensor = Tensor(shape=self.shape)
+            consts = tensor.temp.copy()
+
+            compute_shader = Context.shader("divide_tensor", consts)
+
+            tensor.buffer.bind_to_storage_buffer(0)
+            self.buffer.bind_to_storage_buffer(1)
+            other.buffer.bind_to_storage_buffer(2)
+
+            compute_shader.run(group_x=tensor.bs[0], group_y=1, group_z=1)
+
+        return tensor
+
+    def __pow__(self, other):
+        tensor = self.copy()
+        consts = tensor.temp.copy()
+        consts["S"] = float(other)
+
+        compute_shader = Context.shader("power_scalar", consts)
+
+        tensor.buffer.bind_to_storage_buffer(0)
+
+        compute_shader.run(group_x=tensor.bs[0], group_y=1, group_z=1)
+
+        return tensor
 
     @property
     def shape(self):
