@@ -17,4 +17,3 @@ t.shape
 
 np.arange(10) * 3
 
-np.arange(983475) / 983475

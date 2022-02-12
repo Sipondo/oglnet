@@ -1,21 +1,5 @@
 import numpy as np
-import moderngl
-
-context = moderngl.create_standalone_context(require=430)
-
-
-with open("gl/multiply_scalar.glsl", "r") as fp:
-    shader_raw = fp.read()
-
-
-def source(consts):
-    """ read gl code """
-    content = shader_raw
-
-    # feed constant values
-    for key, value in consts.items():
-        content = content.replace(f"C_{key}_", str(value))
-    return content
+from gl.context import Context
 
 
 class Tensor:
@@ -28,8 +12,6 @@ class Tensor:
             if not isinstance(source, np.ndarray):
                 source = np.array(source)
             self.s = source.shape
-
-        self.context = context
 
         arlen = np.prod(self.shape)
         MAX_X = 1024
@@ -44,14 +26,14 @@ class Tensor:
         b_X = arlen // MAX_X + 1
 
         if source is None:
-            self.buffer = context.buffer(
+            self.buffer = Context.get().buffer(
                 reserve=X * b_X * 4
             )  # p.zeros((X, b_X)).astype("f4"))
         else:
             if isinstance(source, np.ndarray):
-                self.buffer = context.buffer(source.astype("f4"))
+                self.buffer = Context.get().buffer(source.astype("f4"))
             else:
-                self.buffer = context.buffer(source)
+                self.buffer = Context.get().buffer(source)
 
         self.bs = (b_X,)
         self.temp = consts
@@ -78,7 +60,7 @@ class Tensor:
         consts = tensor.temp.copy()
 
         consts["S"] = other
-        compute_shader = tensor.context.compute_shader(source(consts))
+        compute_shader = Context.shader("multiply_scalar", consts)
         tensor.buffer.bind_to_storage_buffer(0)
         compute_shader.run(group_x=tensor.bs[0], group_y=1, group_z=1)
 
