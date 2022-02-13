@@ -10,7 +10,7 @@ class Tensor:
             self.s = shape
         else:
             # TODO: skip converting to Numpy
-            if not isinstance(source, np.ndarray):
+            if not isinstance(source, np.ndarray) and not isinstance(source, Tensor):
                 source = np.array(source)
             self.s = source.shape
 
@@ -27,11 +27,12 @@ class Tensor:
         b_X = arlen // MAX_X + 1
 
         if source is None:
-            self.buffer = Context.get().buffer(
-                reserve=X * b_X * 4
-            )  # p.zeros((X, b_X)).astype("f4"))
+            self.buffer = Context.get().buffer(reserve=X * b_X * 4)
         else:
-            if isinstance(source, np.ndarray):
+            if isinstance(source, Tensor):
+                self.buffer = Context.get().buffer(reserve=X * b_X * 4)
+                Context.get().copy_buffer(self.buffer, source.buffer)
+            elif isinstance(source, np.ndarray):
                 self.buffer = Context.get().buffer(source.astype("f4"))
             else:
                 self.buffer = Context.get().buffer(source)
@@ -40,7 +41,7 @@ class Tensor:
         self.temp = consts
 
     def copy(self):
-        return Tensor(self.buffer.read(), self.shape)
+        return Tensor(self)
 
     def reshape(self, *shape):
         tensor = self.copy()

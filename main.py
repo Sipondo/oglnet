@@ -18,3 +18,7 @@ print(timeit(lambda: t ** 1.5, number=10))
 a = t.array
 
 print(timeit(lambda: a ** 1.5, number=10))
+
+
+t * t
+
